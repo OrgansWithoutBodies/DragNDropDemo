@@ -1,7 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import React, { createRef, forwardRef, useState } from "react";
-import { Mesh, Object3D, Vector3 } from "three";
+import { Mesh, Object3D, Quaternion, Vector3 } from "three";
 import "./App.css";
 type ForwardRefTypeOf<T, P = {}> = typeof forwardRef<T, P>;
 function BoxImpl(
@@ -10,7 +10,7 @@ function BoxImpl(
     onDragMove,
   }: {
     dragging: boolean;
-    onDragMove: (event: { x: number; y: number; z: number }) => void;
+    onDragMove: (pos: ObjV3, normal: ObjV3) => void;
   },
   ref: React.Ref<Mesh>
 ): JSX.Element {
@@ -19,23 +19,21 @@ function BoxImpl(
       ref={ref}
       onPointerMove={(event) => {
         if (dragging) {
-          onDragMove(event.intersections[0].point);
+          console.log(event.intersections);
+          onDragMove(
+            event.intersections[0].point,
+            event.intersections[0].face!.normal
+          );
         }
       }}
     >
-      <boxGeometry args={[1, 1, 1]} />
+      <sphereGeometry args={[1]} />
       <meshStandardMaterial color={"green"} />
     </mesh>
   );
 }
 const Box = React.forwardRef(BoxImpl);
-function Sphere({
-  color,
-  onDragStart,
-}: {
-  color: string;
-  onDragStart: () => void;
-}) {
+function Sphere({ color, onDragStart }: Draggable) {
   return (
     <mesh onPointerDown={onDragStart}>
       <sphereGeometry args={[0.25]} />
@@ -43,33 +41,57 @@ function Sphere({
     </mesh>
   );
 }
+type Draggable = {
+  color: string;
+  onDragStart: () => void;
+};
+
+function Cone({ color, onDragStart }: Draggable) {
+  return (
+    <mesh onPointerDown={onDragStart}>
+      <coneGeometry args={[0.25, 0.5]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
+interface ObjV3<T extends number = number> {
+  x: T;
+  y: T;
+  z: T;
+}
 
 function App() {
-  const [dragging, setDragging] = useState<0 | 1 | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
   const cameraRef = createRef();
   const canvasContainerRef = createRef<HTMLDivElement>();
   const boxRef = createRef<Object3D<Event>>();
+
   const [ballPositions, setBallPositions] = useState<
-    Record<
-      0 | 1,
-      {
-        x: number;
-        y: number;
-        z: number;
-        color: string;
-      } | null
-    >
-  >({ 0: null, 1: null });
-  const items: { name: string; pic: string; color: string }[] = [
+    Record<number, { pos: ObjV3; normal: ObjV3; color: string } | null>
+  >({ 0: null, 1: null, 2: null });
+  const items: {
+    name: string;
+    pic: string;
+    color: string;
+    component: (args: Draggable) => JSX.Element;
+  }[] = [
     {
       name: "test",
       pic: "https://render.fineartamerica.com/images/rendered/default/print/8/8/break/images/artworkimages/medium/2/basketball-skodonnell.jpg",
       color: "orange",
+      component: Sphere,
+    },
+    {
+      name: "test",
+      pic: "https://media.istockphoto.com/id/839499742/photo/blue-pyramid-on-white-background-3d-rendering-illustration.jpg?s=612x612&w=0&k=20&c=9I7mfUakL_A2-jZySoc172zy8yIFp1-eVPtxeR4UVwA=",
+      color: "blue",
+      component: Cone,
     },
     {
       name: "test",
       pic: "https://m.media-amazon.com/images/I/41a5lZAc0XL._AC_UF350,350_QL80_.jpg",
       color: "yellow",
+      component: Sphere,
     },
   ];
   return (
@@ -120,11 +142,12 @@ function App() {
           <Box
             ref={boxRef}
             dragging={dragging !== null}
-            onDragMove={(position) => {
+            onDragMove={(pos, normal) => {
               console.log("ondrag", ballPositions);
               const mutableBallPositions = { ...ballPositions };
               mutableBallPositions[dragging!] = {
-                ...position,
+                pos,
+                normal,
                 color: items[dragging!].color,
               };
 
@@ -133,16 +156,19 @@ function App() {
           />
           {Object.values(ballPositions).map((args, ii) => {
             if (args !== null) {
-              const { color, ...ballPosition } = args;
+              const { color, pos, normal } = args;
+              const Draggable = items[ii].component;
               return (
                 <group
-                  position={
-                    new Vector3(ballPosition.x, ballPosition.y, ballPosition.z)
-                  }
+                  position={new Vector3(pos.x, pos.y, pos.z)}
+                  quaternion={new Quaternion().setFromUnitVectors(
+                    new Vector3(0, 1, 0),
+                    new Vector3(normal.x, normal.y, normal.z).normalize()
+                  )}
                 >
-                  <Sphere
+                  <Draggable
                     color={color}
-                    onDragStart={() => setDragging(ii as 0 | 1)}
+                    onDragStart={() => setDragging(ii)}
                   />
                 </group>
               );
@@ -157,7 +183,7 @@ function App() {
           return (
             <div
               onMouseDown={() => {
-                setDragging(ii as 0 | 1);
+                setDragging(ii);
                 // console.log("SETDRAG", ii, dragging);
               }}
             >
