@@ -3,7 +3,8 @@ import { Canvas, useThree } from "@react-three/fiber";
 import React, { createRef, forwardRef, useState } from "react";
 import { Mesh, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
 import "./App.css";
-import { DraggableGeometry } from "./data/data.store";
+import { dataService } from "./data/data.service";
+import { DraggableGeometry, ObjV3, PlacedID } from "./data/data.store";
 import { useData } from "./data/useAkita";
 type ForwardRefTypeOf<T, P = {}> = typeof forwardRef<T, P>;
 function BoxImpl(
@@ -16,15 +17,12 @@ function BoxImpl(
   },
   ref: React.Ref<Mesh>
 ): JSX.Element {
-  const { scene } = useThree();
-  console.log("TEST123-sphere", scene);
   return (
     <mesh
       name={"BASE"}
       ref={ref}
       onPointerMove={(event) => {
         if (dragging) {
-          // console.log(event.intersections);
           onDragMove(
             event.intersections[0].point,
             event.intersections[0].face!.normal
@@ -33,20 +31,6 @@ function BoxImpl(
       }}
     >
       <primitive attach="geometry" object={new SphereGeometry(1)} />
-      {/* <bufferGeometry attach={"geometry"}>
-        <bufferAttribute
-          attach={"position"}
-          itemSize={3}
-          array={new SphereGeometry(1).attributes["position"].array}
-          count={new SphereGeometry(1).attributes["position"].array.length}
-        />
-        <bufferAttribute
-          attach={"normal"}
-          itemSize={3}
-          array={new SphereGeometry(1).attributes["normal"].array}
-          count={new SphereGeometry(1).attributes["normal"].array.length}
-        />
-      </bufferGeometry> */}
 
       <meshStandardMaterial color={"green"} />
     </mesh>
@@ -59,7 +43,8 @@ function DraggableElement({
   geometry: implicitGeometry,
 }: Draggable & DraggableGeometry) {
   const geometry = implicitGeometry();
-  console.log("TEST123-geom", geometry);
+  const { scene } = useThree();
+  console.log("TEST123-scene", scene.children);
   return (
     <mesh onPointerDown={onDragStart}>
       <primitive attach="geometry" object={geometry} />
@@ -72,66 +57,50 @@ type Draggable = {
   onDragStart: () => void;
 };
 
-function Cone({ color, onDragStart }: Draggable) {
-  return (
-    <mesh onPointerDown={onDragStart}>
-      <coneGeometry args={[0.25, 0.5]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
-  );
-}
-interface ObjV3<T extends number = number> {
-  x: T;
-  y: T;
-  z: T;
-}
-
 function App() {
-  const [dragging, setDragging] = useState<number | null>(null);
+  const [dragging, setDragging] = useState<PlacedID | null>(null);
   const cameraRef = createRef();
   const canvasContainerRef = createRef<HTMLDivElement>();
   const boxRef = createRef<Object3D<Event>>();
 
-  const [{ droppableEntities }] = useData(["droppableEntities"]);
-  const [ballPositions, setBallPositions] = useState<
-    Record<number, { pos: ObjV3; normal: ObjV3; color: string } | null>
-  >({ 0: null, 1: null, 2: null });
-  console.log("TEST123-balls", ballPositions);
+  const [{ droppableEntities, placedEntities }] = useData([
+    "droppableEntities",
+    "placedEntities",
+  ]);
+  console.log("TEST123-placed", placedEntities);
+  const DraggableAdapter =
+    ({ key }: { key: keyof typeof droppableEntities }) =>
+    ({ color, onDragStart }: Draggable) =>
+      (
+        <DraggableElement
+          color={color}
+          onDragStart={onDragStart}
+          geometry={droppableEntities[key].geometry}
+        />
+      );
   const items: {
     name: string;
     pic: string;
     color: string;
-    component: (args: Draggable) => JSX.Element;
+    id: keyof typeof droppableEntities;
   }[] = [
     {
       name: "test",
       pic: "https://render.fineartamerica.com/images/rendered/default/print/8/8/break/images/artworkimages/medium/2/basketball-skodonnell.jpg",
       color: "orange",
-      component: ({ color, onDragStart }) => (
-        <DraggableElement
-          color={color}
-          onDragStart={onDragStart}
-          geometry={droppableEntities["sphere"].geometry}
-        />
-      ),
+      id: "sphere",
     },
     {
       name: "test",
       pic: "https://media.istockphoto.com/id/839499742/photo/blue-pyramid-on-white-background-3d-rendering-illustration.jpg?s=612x612&w=0&k=20&c=9I7mfUakL_A2-jZySoc172zy8yIFp1-eVPtxeR4UVwA=",
       color: "blue",
-      component: Cone,
+      id: "cone",
     },
     {
       name: "test",
       pic: "https://m.media-amazon.com/images/I/41a5lZAc0XL._AC_UF350,350_QL80_.jpg",
       color: "yellow",
-      component: ({ color, onDragStart }) => (
-        <DraggableElement
-          color={color}
-          onDragStart={onDragStart}
-          geometry={droppableEntities["sphere"].geometry}
-        />
-      ),
+      id: "cone",
     },
   ];
   return (
@@ -183,38 +152,42 @@ function App() {
             ref={boxRef}
             dragging={dragging !== null}
             onDragMove={(pos, normal) => {
-              // console.log("ondrag", ballPositions);
-              const mutableBallPositions = { ...ballPositions };
-              mutableBallPositions[dragging!] = {
-                pos,
-                normal,
-                color: items[dragging!].color,
-              };
-
-              setBallPositions(mutableBallPositions);
+              dataService.updateEntityPosition(dragging!, { pos, normal });
             }}
           />
-          {Object.values(ballPositions).map((args, ii) => {
-            if (args !== null) {
-              const { color, pos, normal } = args;
-              const Draggable = items[ii].component;
-              return (
-                <group
-                  position={new Vector3(pos.x, pos.y, pos.z)}
-                  quaternion={new Quaternion().setFromUnitVectors(
-                    new Vector3(0, 1, 0),
-                    new Vector3(normal.x, normal.y, normal.z).normalize()
-                  )}
-                >
-                  <Draggable
-                    color={color}
-                    onDragStart={() => setDragging(ii)}
-                  />
-                </group>
-              );
-            }
-            return <></>;
-          })}
+          {placedEntities &&
+            Object.values(placedEntities).map((args) => {
+              if (args !== null) {
+                const {
+                  color,
+                  pos,
+                  normal,
+                  droppable: { id },
+                } = args;
+                console.log("TEST123-draggable", pos, normal);
+                if (pos === null || normal === null) {
+                  return <></>;
+                }
+                const Draggable = DraggableAdapter({
+                  key: id,
+                });
+                return (
+                  <group
+                    position={new Vector3(pos.x, pos.y, pos.z)}
+                    quaternion={new Quaternion().setFromUnitVectors(
+                      new Vector3(0, 1, 0),
+                      new Vector3(normal.x, normal.y, normal.z).normalize()
+                    )}
+                  >
+                    <Draggable
+                      color={color}
+                      onDragStart={() => setDragging(args.placedEntityId)}
+                    />
+                  </group>
+                );
+              }
+              return <></>;
+            })}
           <OrbitControls enableRotate={dragging === null} />
         </Canvas>
       </div>
@@ -223,7 +196,8 @@ function App() {
           return (
             <div
               onMouseDown={() => {
-                setDragging(ii);
+                const placementID = dataService.addDroppable(item.id);
+                setDragging(placementID);
                 // console.log("SETDRAG", ii, dragging);
               }}
             >
