@@ -1,8 +1,10 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import React, { createRef, forwardRef, useState } from "react";
-import { Mesh, Object3D, Quaternion, Vector3 } from "three";
+import { Mesh, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
 import "./App.css";
+import { DraggableGeometry } from "./data/data.store";
+import { useData } from "./data/useAkita";
 type ForwardRefTypeOf<T, P = {}> = typeof forwardRef<T, P>;
 function BoxImpl(
   {
@@ -14,12 +16,15 @@ function BoxImpl(
   },
   ref: React.Ref<Mesh>
 ): JSX.Element {
+  const { scene } = useThree();
+  console.log("TEST123-sphere", scene);
   return (
     <mesh
+      name={"BASE"}
       ref={ref}
       onPointerMove={(event) => {
         if (dragging) {
-          console.log(event.intersections);
+          // console.log(event.intersections);
           onDragMove(
             event.intersections[0].point,
             event.intersections[0].face!.normal
@@ -27,16 +32,37 @@ function BoxImpl(
         }
       }}
     >
-      <sphereGeometry args={[1]} />
+      <primitive attach="geometry" object={new SphereGeometry(1)} />
+      {/* <bufferGeometry attach={"geometry"}>
+        <bufferAttribute
+          attach={"position"}
+          itemSize={3}
+          array={new SphereGeometry(1).attributes["position"].array}
+          count={new SphereGeometry(1).attributes["position"].array.length}
+        />
+        <bufferAttribute
+          attach={"normal"}
+          itemSize={3}
+          array={new SphereGeometry(1).attributes["normal"].array}
+          count={new SphereGeometry(1).attributes["normal"].array.length}
+        />
+      </bufferGeometry> */}
+
       <meshStandardMaterial color={"green"} />
     </mesh>
   );
 }
 const Box = React.forwardRef(BoxImpl);
-function Sphere({ color, onDragStart }: Draggable) {
+function DraggableElement({
+  color,
+  onDragStart,
+  geometry: implicitGeometry,
+}: Draggable & DraggableGeometry) {
+  const geometry = implicitGeometry();
+  console.log("TEST123-geom", geometry);
   return (
     <mesh onPointerDown={onDragStart}>
-      <sphereGeometry args={[0.25]} />
+      <primitive attach="geometry" object={geometry} />
       <meshStandardMaterial color={color} />
     </mesh>
   );
@@ -66,9 +92,11 @@ function App() {
   const canvasContainerRef = createRef<HTMLDivElement>();
   const boxRef = createRef<Object3D<Event>>();
 
+  const [{ droppableEntities }] = useData(["droppableEntities"]);
   const [ballPositions, setBallPositions] = useState<
     Record<number, { pos: ObjV3; normal: ObjV3; color: string } | null>
   >({ 0: null, 1: null, 2: null });
+  console.log("TEST123-balls", ballPositions);
   const items: {
     name: string;
     pic: string;
@@ -79,7 +107,13 @@ function App() {
       name: "test",
       pic: "https://render.fineartamerica.com/images/rendered/default/print/8/8/break/images/artworkimages/medium/2/basketball-skodonnell.jpg",
       color: "orange",
-      component: Sphere,
+      component: ({ color, onDragStart }) => (
+        <DraggableElement
+          color={color}
+          onDragStart={onDragStart}
+          geometry={droppableEntities["sphere"].geometry}
+        />
+      ),
     },
     {
       name: "test",
@@ -91,7 +125,13 @@ function App() {
       name: "test",
       pic: "https://m.media-amazon.com/images/I/41a5lZAc0XL._AC_UF350,350_QL80_.jpg",
       color: "yellow",
-      component: Sphere,
+      component: ({ color, onDragStart }) => (
+        <DraggableElement
+          color={color}
+          onDragStart={onDragStart}
+          geometry={droppableEntities["sphere"].geometry}
+        />
+      ),
     },
   ];
   return (
@@ -143,7 +183,7 @@ function App() {
             ref={boxRef}
             dragging={dragging !== null}
             onDragMove={(pos, normal) => {
-              console.log("ondrag", ballPositions);
+              // console.log("ondrag", ballPositions);
               const mutableBallPositions = { ...ballPositions };
               mutableBallPositions[dragging!] = {
                 pos,
@@ -187,6 +227,12 @@ function App() {
                 // console.log("SETDRAG", ii, dragging);
               }}
             >
+              {/* <scene>
+                <mesh>
+                  <bufferGeometry
+                </mesh>
+                {item.component}
+              </scene> */}
               <img
                 width={100}
                 src={item.pic}
