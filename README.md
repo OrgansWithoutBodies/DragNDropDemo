@@ -19,4 +19,4 @@ Couple ways to run this:
 
   to compile everything & boot up a local web server. Then visit http://localhost:4173/ with your web browser
   
-  [demo](./demo.png)
+  ![demo](./demo.png)
