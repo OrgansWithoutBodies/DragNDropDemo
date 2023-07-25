@@ -14,8 +14,7 @@ Couple ways to run this:
 
 - If you don't want to install docker but you have yarn/npm installed on your machine, then you can manually run
 
-        > yarn
-        > yarn build
+        > yarn install -D vite
         > yarn preview
 
   to compile everything & boot up a local web server. Then visit http://localhost:4173/ with your web browser

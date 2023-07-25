@@ -104,8 +104,17 @@ function App() {
       <>
         <perspectiveCamera ref={cameraRef} />
 
-        <ambientLight />
-        <directionalLight color="#ffffff" intensity={2} position={[-1, 2, 4]} />
+        <ambientLight intensity={0.25} />
+        <directionalLight
+          color="#ffccaa"
+          intensity={0.5}
+          position={[-1, 2, 4]}
+        />
+        <directionalLight
+          color="#aaccff"
+          intensity={0.5}
+          position={[1, 2, 4]}
+        />
         <BaseMesh
           ref={boxRef}
           dragging={dragging !== null}
@@ -309,6 +318,7 @@ function App() {
         built in compositor which makes this pretty easy)
         <p /> "Price" system per-object giving intrinsic limit to how many
         objects user can limit, model for profitability
+        <p />
       </div>
     </div>
   );
@@ -337,7 +347,7 @@ export function DraggableScene({
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}
     >
-      <directionalLight color="#ffffff" intensity={2} position={[-1, 2, 4]} />
+      <directionalLight color="#ffffff" intensity={1} position={[-1, 2, 4]} />
       <ambientLight />
       <primitive ref={objRef} object={geometry} attach="geometry" />
       <meshStandardMaterial color={activeColor} />
