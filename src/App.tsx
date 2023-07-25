@@ -271,6 +271,7 @@ function App() {
         <p />- Change colors for next mesh dropped onto canvas
         <p />- RHS can have any number of arbitrary mesh objects
         <p />- Export current scene to GLTF
+        <p />- Orbit RHS object on hover
       </div>
       <div>
         Future plans for improvement:
