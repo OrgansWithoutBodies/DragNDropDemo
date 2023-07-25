@@ -7,6 +7,7 @@ Couple ways to run this:
 	- If you can't run shell scripts on your machine, then just run the following commands:
 
 		> docker build -t dragdropdemo .
+		
 		> docker run -d -p 4173:4173 dragdropdemo
 
 		then visit http://localhost:4173/ with your web browser
