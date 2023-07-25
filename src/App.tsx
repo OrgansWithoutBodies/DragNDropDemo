@@ -1,5 +1,6 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { EffectComposer, Outline } from "@react-three/postprocessing";
 import React, { createRef, useEffect, useRef, useState } from "react";
 import {
   BufferGeometry,
@@ -56,18 +57,31 @@ function DraggableElement({
   geometry: implicitGeometry,
 }: Draggable & DraggableGeometry<false>) {
   const geometry = implicitGeometry();
-  const hoveringObject = false;
-  // const [hoveringObject, setHoveringObject] = useState<boolean>(false);
+  // const hoveringObject = false;
+  const ref = useRef();
+  const [hoveringObject, setHoveringObject] = useState<boolean>(false);
+  console.log("hover", hoveringObject);
   return (
-    <mesh
-      onPointerDown={onDragStart}
-      // makes the geometry freak out for some reason
-      // onPointerLeave={() => setHoveringObject(false)}
-      // onPointerEnter={() => setHoveringObject(true)}
-    >
-      <primitive attach="geometry" object={geometry} />
-      <meshStandardMaterial color={hoveringObject ? "cyan" : color} />
-    </mesh>
+    <group>
+      <EffectComposer enabled={hoveringObject} autoClear={false}>
+        <Outline
+          hiddenEdgeColor={0xffffff}
+          edgeStrength={100}
+          selection={hoveringObject ? ref.current : undefined}
+        />
+      </EffectComposer>
+      <mesh
+        ref={ref}
+        onPointerDown={onDragStart}
+        // makes the geometry freak out for some reason
+        onPointerLeave={() => setHoveringObject(false)}
+        onPointerEnter={() => setHoveringObject(true)}
+      >
+        <primitive attach="geometry" object={geometry} />
+        <meshStandardMaterial color={color} />
+        {/* <meshStandardMaterial color={hoveringObject ? "cyan" : color} /> */}
+      </mesh>
+    </group>
   );
 }
 type Draggable = {
@@ -349,7 +363,6 @@ export function DraggableScene({
   const objRef = useRef<BufferGeometry>();
   const [hovering, setHovering] = useState<boolean>(false);
   const { scene } = useThree();
-  console.log("TEST123-scene", scene.children);
   useFrame((state, delta) => {
     if (hovering) {
       const angle = delta * 7;
