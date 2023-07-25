@@ -1,6 +1,6 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import React, { createRef, useRef, useState } from "react";
+import React, { createRef, useEffect, useRef, useState } from "react";
 import {
   BufferGeometry,
   Mesh,
@@ -54,7 +54,7 @@ function DraggableElement({
   color,
   onDragStart,
   geometry: implicitGeometry,
-}: Draggable & DraggableGeometry) {
+}: Draggable & DraggableGeometry<false>) {
   const geometry = implicitGeometry();
   const hoveringObject = false;
   // const [hoveringObject, setHoveringObject] = useState<boolean>(false);
@@ -75,6 +75,11 @@ type Draggable = {
   onDragStart: () => void;
 };
 
+function draggableIsLoadedGuard(
+  draggable: DraggableGeometry
+): draggable is DraggableGeometry<false> {
+  return "geometry" in draggable;
+}
 function App() {
   const [dragging, setDragging] = useState<PlacedID | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
@@ -87,16 +92,24 @@ function App() {
     "activeColor",
     "placedEntities",
   ]);
+  useEffect(() => {
+    void dataService.loadAsyncModels();
+  }, []);
   const DraggableAdapter =
     ({ key }: { key: keyof typeof droppableEntities }) =>
-    ({ color, onDragStart }: Draggable) =>
-      (
+    ({ color, onDragStart }: Draggable) => {
+      const droppable = droppableEntities[key];
+      return draggableIsLoadedGuard(droppable) ? (
         <DraggableElement
           color={color}
           onDragStart={onDragStart}
-          geometry={droppableEntities[key].geometry}
+          geometry={droppable.geometry}
         />
+      ) : (
+        <></>
       );
+    };
+
   function CanvasContents({ setScene }: { setScene: (scene: Scene) => void }) {
     const { scene: localScene } = useThree();
     setScene(localScene);
@@ -227,26 +240,7 @@ function App() {
         <div>
           {droppableEntities &&
             Object.keys(droppableEntities).map((droppableKey) => {
-              return (
-                <div
-                  style={{ width: 100, height: 100 }}
-                  onMouseDown={() => {
-                    const placementID = dataService.addDroppable(
-                      droppableKey as DroppableID
-                    );
-                    setDragging(placementID);
-                  }}
-                >
-                  <Canvas style={{ background: "black" }} camera={{ zoom: 10 }}>
-                    <DraggableScene
-                      geometry={droppableEntities[
-                        droppableKey as DroppableID
-                      ].geometry()}
-                      activeColor={activeColor}
-                    />
-                  </Canvas>
-                </div>
-              );
+              return DroppableCompponent(droppableKey as DroppableID);
             })}
         </div>
       </div>
@@ -262,7 +256,6 @@ function App() {
           exporter.parse(
             scene!,
             (gltf) => {
-              console.log("gltf", gltf);
               saveArrayBuffer(JSON.stringify(gltf), "demo.gltf");
             },
             () => {
@@ -281,6 +274,8 @@ function App() {
         <p />- RHS can have any number of arbitrary mesh objects
         <p />- Export current scene to GLTF
         <p />- Orbit RHS object on hover
+        <p />- Automatically orient object to align with base normal
+        <p />- Import arbitrary GLTF as RHS source object (teapot is gltf)
       </div>
       <div>
         Future plans for improvement:
@@ -322,6 +317,26 @@ function App() {
       </div>
     </div>
   );
+
+  function DroppableCompponent(droppableKey: DroppableID) {
+    const droppable = droppableEntities[droppableKey];
+    const geometry = "geometry" in droppable ? droppable.geometry() : null;
+    return (
+      <div
+        style={{ width: 100, height: 100 }}
+        onMouseDown={() => {
+          const placementID = dataService.addDroppable(droppableKey);
+          setDragging(placementID);
+        }}
+      >
+        <Canvas style={{ background: "black" }} camera={{ zoom: 10 }}>
+          {geometry && (
+            <DraggableScene geometry={geometry} activeColor={activeColor} />
+          )}
+        </Canvas>
+      </div>
+    );
+  }
 }
 
 export function DraggableScene({
@@ -333,6 +348,8 @@ export function DraggableScene({
 }): JSX.Element {
   const objRef = useRef<BufferGeometry>();
   const [hovering, setHovering] = useState<boolean>(false);
+  const { scene } = useThree();
+  console.log("TEST123-scene", scene.children);
   useFrame((state, delta) => {
     if (hovering) {
       const angle = delta * 7;
@@ -347,9 +364,9 @@ export function DraggableScene({
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}
     >
-      <directionalLight color="#ffffff" intensity={1} position={[-1, 2, 4]} />
+      <directionalLight color="#ffffff" intensity={0.7} position={[-1, 2, 4]} />
       <ambientLight />
-      <primitive ref={objRef} object={geometry} attach="geometry" />
+      <primitive ref={objRef} object={geometry.clone()} attach="geometry" />
       <meshStandardMaterial color={activeColor} />
     </mesh>
   );

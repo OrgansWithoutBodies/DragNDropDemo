@@ -1,4 +1,5 @@
 import { Store, StoreConfig } from "@datorama/akita";
+
 import {
   ConeGeometry,
   SphereGeometry,
@@ -6,7 +7,14 @@ import {
   TorusKnotGeometry,
 } from "three";
 
-export type DraggableGeometry = { geometry: () => THREE.BufferGeometry };
+export type DraggableGeometry<TAsync extends boolean = boolean> =
+  TAsync extends true
+    ? {
+        geometryAsyncSource: string;
+      }
+    : {
+        geometry: () => THREE.BufferGeometry;
+      };
 
 export type BrandedString<T extends string> = string & { __brand: T };
 export type DroppableID = BrandedString<"Droppable">;
@@ -17,9 +25,9 @@ export interface ObjV3<T extends number = number> {
   y: T;
   z: T;
 }
-export type Placement = {
+export type Placement<TAsync extends boolean = boolean> = {
   placedEntityId: PlacedID;
-  droppable: DraggableGeometry & {
+  droppable: DraggableGeometry<TAsync> & {
     id: DroppableID;
   };
   pos: ObjV3 | null;
@@ -46,6 +54,17 @@ export function createInitialState(): DataState {
       ["torus" as DroppableID]: {
         geometry: () =>
           new TorusGeometry(0.25, 0.125).rotateX((Math.PI * 2) / 4),
+      },
+      ["teapot" as DroppableID]: {
+        // geometry: async () => {
+        //   const loader = new GLTFLoader();
+        //   const data = await loader.loadAsync("src/assets/teapot.gltf");
+        //   console.log("TEST123-returning", data);
+        //   return (
+        //     data.scene.children as any as { geometry: BufferGeometry }[]
+        //   )[0].geometry.scale(10, 10, 10);
+        // },
+        geometryAsyncSource: "src/assets/teapot.gltf",
       },
     },
     placedEntities: [],
