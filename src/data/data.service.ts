@@ -20,6 +20,12 @@ function makeid(length: number) {
 
 export class DataService {
   constructor(private dataStore: DataStore) {}
+  public setActiveColor(activeColor: string) {
+    this.dataStore.update(({ ...R }) => ({
+      ...R,
+      activeColor,
+    }));
+  }
   public placeEntity(placement: Placement) {
     this.dataStore.update(({ placedEntities, ...R }) => ({
       ...R,
@@ -27,20 +33,19 @@ export class DataService {
     }));
   }
   public addDroppable(droppable: DroppableID): PlacedID {
-    const { droppableEntities } = this.dataStore.getValue();
+    const { droppableEntities, activeColor } = this.dataStore.getValue();
     const data: Placement = {
       droppable: {
         id: droppable,
         geometry: droppableEntities[droppable].geometry,
       },
-      color: "red",
+      color: activeColor,
       normal: null,
       pos: null,
-      placedEntityId: makeid(10),
+      placedEntityId: makeid(10) as PlacedID,
     };
     this.placeEntity(data);
 
-    console.log("TEST123-place", data);
     return data.placedEntityId;
   }
   public updateEntity(
@@ -61,8 +66,6 @@ export class DataService {
         placedEntities: updatedPlacements,
       };
     });
-    const { placedEntities } = this.dataStore.getValue();
-    console.log("TEST123-update", placedEntities);
   }
   public updateEntityPosition(
     placementID: Placement["placedEntityId"],

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { dataQuery } from "./data.query";
 import { dataService } from "./data.service";
 
-type StateShapeDefault = {};
+type StateShapeDefault = object;
 type SubscribedQueryKeys<TQuery extends Query<StateShapeDefault>> =
   (keyof TQuery)[];
 type LiteralQueryState<
@@ -23,6 +23,7 @@ export function useAkita<
   service: TService,
   queryTerms: SubscribedQueryKeys<TQuery>
 ): [LiteralQueryState<TQuery, typeof queryTerms>, TService[keyof TService][]] {
+  console.log(service);
   const [retrievedQueryTerms, setRetrievedQueryTerms] = useState<
     LiteralQueryState<TQuery, typeof queryTerms>
   >(
@@ -35,7 +36,7 @@ export function useAkita<
   useEffect(() => {
     const subscriptions = queryTerms.map((term) => {
       // TODO no any
-      const retrievedQueryObservable = query[term] as Observable<any>;
+      const retrievedQueryObservable = query[term] as Observable<TQuery>;
 
       return retrievedQueryObservable.subscribe({
         next(observedValue) {
