@@ -37,10 +37,14 @@ function BaseMeshImpl(
       ref={ref}
       onPointerMove={(event) => {
         if (dragging) {
-          onDragMove(
-            event.intersections[0].point,
-            event.intersections[0].face!.normal
+          console.log("TEST123", event.intersections);
+
+          const baseObj = event.intersections.find(
+            (obj) => obj.object.name === "BASE"
           );
+          if (baseObj) {
+            onDragMove(baseObj.point, baseObj.face!.normal);
+          }
         }
       }}
     >
@@ -55,7 +59,13 @@ function DraggableElement({
   color,
   onDragStart,
   geometry: implicitGeometry,
-}: Draggable & DraggableGeometry<false>) {
+  isSelected,
+  dragging,
+  onSelect,
+}: Draggable & {
+  isSelected: boolean;
+  dragging: boolean;
+} & DraggableGeometry<false>) {
   const geometry = implicitGeometry();
   // const hoveringObject = false;
   const ref = useRef();
@@ -69,13 +79,24 @@ function DraggableElement({
           edgeStrength={100}
           selection={hoveringObject ? ref.current : undefined}
         />
+        <Outline
+          hiddenEdgeColor={0xaaaaff}
+          edgeStrength={100}
+          selection={isSelected ? ref.current : undefined}
+        />
       </EffectComposer>
       <mesh
         ref={ref}
+        onClick={() => onSelect()}
         onPointerDown={onDragStart}
         // makes the geometry freak out for some reason
         onPointerLeave={() => setHoveringObject(false)}
-        onPointerEnter={() => setHoveringObject(true)}
+        onPointerEnter={() => {
+          if (dragging) {
+            return;
+          }
+          setHoveringObject(true);
+        }}
       >
         <primitive attach="geometry" object={geometry} />
         <meshStandardMaterial color={color} />
@@ -87,6 +108,7 @@ function DraggableElement({
 type Draggable = {
   color: string;
   onDragStart: () => void;
+  onSelect: () => void;
 };
 
 function draggableIsLoadedGuard(
@@ -100,24 +122,31 @@ function App() {
   const cameraRef = createRef<PerspectiveCamera>();
   const canvasContainerRef = createRef<HTMLDivElement>();
   const boxRef = createRef<Mesh>();
+  // const [current, send] = useMachine(DragNDropMachine);
 
-  const [{ droppableEntities, placedEntities, activeColor }] = useData([
+  const [
+    { droppableEntities, placedEntities, activeColor, selectedPlacedEntity },
+  ] = useData([
     "droppableEntities",
     "activeColor",
     "placedEntities",
+    "selectedPlacedEntity",
   ]);
   useEffect(() => {
     void dataService.loadAsyncModels();
   }, []);
   const DraggableAdapter =
-    ({ key }: { key: keyof typeof droppableEntities }) =>
-    ({ color, onDragStart }: Draggable) => {
+    ({ key, placeableID }: { key: DroppableID; placeableID: PlacedID }) =>
+    ({ color, onDragStart, onSelect }: Draggable) => {
       const droppable = droppableEntities[key];
       return draggableIsLoadedGuard(droppable) ? (
         <DraggableElement
           color={color}
+          dragging={dragging !== null}
           onDragStart={onDragStart}
           geometry={droppable.geometry}
+          isSelected={selectedPlacedEntity === placeableID}
+          onSelect={onSelect}
         />
       ) : (
         <></>
@@ -154,6 +183,7 @@ function App() {
             if (args !== null) {
               const {
                 color,
+                placedEntityId,
                 pos,
                 normal,
                 droppable: { id },
@@ -163,6 +193,7 @@ function App() {
               }
               const Draggable = DraggableAdapter({
                 key: id,
+                placeableID: placedEntityId,
               });
               return (
                 <group
@@ -173,8 +204,12 @@ function App() {
                   )}
                 >
                   <Draggable
+                    dragging={dragging !== null}
                     color={color}
-                    onDragStart={() => setDragging(args.placedEntityId)}
+                    onDragStart={() => setDragging(placedEntityId)}
+                    onSelect={() => {
+                      dataService.setSelected(placedEntityId);
+                    }}
                   />
                 </group>
               );
@@ -345,7 +380,11 @@ function App() {
       >
         <Canvas style={{ background: "black" }} camera={{ zoom: 10 }}>
           {geometry && (
-            <DraggableScene geometry={geometry} activeColor={activeColor} />
+            <DraggableScene
+              geometry={geometry}
+              activeColor={activeColor}
+              // dragging={dragging !== null}
+            />
           )}
         </Canvas>
       </div>

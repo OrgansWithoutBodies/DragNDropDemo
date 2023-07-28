@@ -62,6 +62,13 @@ export class DataService {
       activeColor,
     }));
   }
+  public setSelected(selected: PlacedID) {
+    console.log("TEST124-select");
+    this.dataStore.update(({ ...R }) => ({
+      ...R,
+      selectedPlacedEntity: selected,
+    }));
+  }
   public placeEntity(placement: Placement) {
     this.dataStore.update(({ placedEntities, ...R }) => ({
       ...R,
