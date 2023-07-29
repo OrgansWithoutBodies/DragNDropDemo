@@ -274,9 +274,10 @@ function App() {
                   width: 100,
                   height: 100,
                   borderRadius: 20,
-                  strokeWidth: 20,
-                  stroke: "black",
-                  strokeOpacity: 1,
+                  outlineWidth: 5,
+                  outlineOffset: -7,
+                  outlineStyle: "solid",
+                  outlineColor: activeColor === item.color ? "white" : "black",
                   backgroundColor: item.color,
                 }}
               ></div>
@@ -413,6 +414,8 @@ function App() {
         <p /> Each mesh currently solid color, can make mesh have
         texture/multiple color slots
         <p /> Animated Components
+        <p /> Some sort of indication of what component you're dragging when not
+        dragging over "canvas" (base sphere)
         <p /> Make code cleaner - just aiming for functional demo instead of
         PR-worthy code. Think this pattern is a great basis for further
         extensibility tho
