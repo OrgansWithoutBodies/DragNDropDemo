@@ -21,3 +21,9 @@ Couple ways to run this:
   to compile everything & boot up a local web server. Then visit http://localhost:4173/ with your web browser
 
   ![demo](./demo.png)
+
+# State Machine
+
+![stateMachine](./stateMachine.png)
+
+State machine has yet to be fully implemented but included is a diagram of a rough sketch machine. Events are purely in terms of mouse events.
