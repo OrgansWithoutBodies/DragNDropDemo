@@ -77,7 +77,6 @@ function DraggableElement({
             hiddenEdgeColor={0x22ffff}
             visibleEdgeColor={0x22ffff}
             edgeStrength={100}
-            // TODO no any
             selection={ref.current || undefined}
           />
         ) : (
@@ -286,6 +285,7 @@ function App() {
         </div>
         <div style={{ width: 800, height: 800 }} ref={canvasContainerRef}>
           <Canvas
+            onPointerUp={() => setDragging(null)}
             style={{ background: "black" }}
             // onMouseMove={(event) => {
             //   if (dragging !== null) {
@@ -403,7 +403,8 @@ function App() {
         <p />- No control gizmos for reorienting placed objects (functionally
         easy, deciding on how gizmo should look is harder - also it depends on
         if it's desired to keep the same normal direction as the given face on
-        our base mesh or not)
+        our base mesh or not - if normals should be kept aligned then only 1
+        rotational DoF)
         <p />- Can only add on to base mesh (unclear if adding onto whole mesh
         is within desired scope, slightly challenging not impossible - begs the
         question of what to do w a mesh if the mesh it's 'pasted' onto is
