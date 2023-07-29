@@ -68,27 +68,54 @@ function DraggableElement({
 } & DraggableGeometry<false>) {
   const geometry = implicitGeometry();
   // const hoveringObject = false;
-  const ref = useRef();
+  const ref = createRef<Mesh>();
+  const [mouseDown, setMouseDown] = useState<boolean>(false);
   const [hoveringObject, setHoveringObject] = useState<boolean>(false);
-  console.log("hover", hoveringObject);
+  console.log("TEST123-outline", isSelected, ref.current);
   return (
     <group>
       <EffectComposer enabled={hoveringObject} autoClear={false}>
-        <Outline
-          hiddenEdgeColor={0xffffff}
-          edgeStrength={100}
-          selection={hoveringObject ? ref.current : undefined}
-        />
-        <Outline
-          hiddenEdgeColor={0xaaaaff}
-          edgeStrength={100}
-          selection={isSelected ? ref.current : undefined}
-        />
+        {hoveringObject ? (
+          <Outline
+            hiddenEdgeColor={0x22ffff}
+            visibleEdgeColor={0x22ffff}
+            edgeStrength={100}
+            // TODO no any
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            selection={ref.current as any}
+          />
+        ) : (
+          <></>
+        )}
+
+        {/* {isSelected ? (
+          <Outline
+            hiddenEdgeColor={0xffff00}
+            visibleEdgeColor={0xffff00}
+            edgeStrength={10000}
+            selection={ref.current}
+          />
+        ) : (
+          <></>
+        )} */}
       </EffectComposer>
       <mesh
         ref={ref}
-        onClick={() => onSelect()}
-        onPointerDown={onDragStart}
+        onPointerDown={() => setMouseDown(true)}
+        onPointerMove={() => {
+          // TODO terrible pattern in lieu of state machine
+          if (mouseDown || dragging) {
+            onDragStart();
+            setMouseDown(false);
+          }
+        }}
+        onPointerUp={() => {
+          console.log("TEST123-pointerup");
+          if (mouseDown && !dragging) {
+            setMouseDown(false);
+            onSelect(!isSelected);
+          }
+        }}
         // makes the geometry freak out for some reason
         onPointerLeave={() => setHoveringObject(false)}
         onPointerEnter={() => {
@@ -99,7 +126,7 @@ function DraggableElement({
         }}
       >
         <primitive attach="geometry" object={geometry} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={!isSelected ? color : "cyan"} />
         {/* <meshStandardMaterial color={hoveringObject ? "cyan" : color} /> */}
       </mesh>
     </group>
@@ -108,7 +135,7 @@ function DraggableElement({
 type Draggable = {
   color: string;
   onDragStart: () => void;
-  onSelect: () => void;
+  onSelect: (val: boolean) => void;
 };
 
 function draggableIsLoadedGuard(
@@ -142,7 +169,7 @@ function App() {
       return draggableIsLoadedGuard(droppable) ? (
         <DraggableElement
           color={color}
-          dragging={dragging !== null}
+          dragging={dragging === placeableID}
           onDragStart={onDragStart}
           geometry={droppable.geometry}
           isSelected={selectedPlacedEntity === placeableID}
@@ -154,7 +181,7 @@ function App() {
     };
 
   function CanvasContents({ setScene }: { setScene: (scene: Scene) => void }) {
-    const { scene: localScene } = useThree();
+    const { scene: localScene, invalidate } = useThree();
     setScene(localScene);
     return (
       <>
@@ -204,11 +231,21 @@ function App() {
                   )}
                 >
                   <Draggable
-                    dragging={dragging !== null}
                     color={color}
                     onDragStart={() => setDragging(placedEntityId)}
-                    onSelect={() => {
-                      dataService.setSelected(placedEntityId);
+                    onSelect={(val) => {
+                      if (val === true) {
+                        dataService.setSelected(placedEntityId);
+                      } else {
+                        dataService.setSelected(null);
+                      }
+                      invalidate();
+
+                      console.log(
+                        "TEST123-select",
+                        selectedPlacedEntity,
+                        placedEntityId
+                      );
                     }}
                   />
                 </group>
@@ -293,28 +330,46 @@ function App() {
             })}
         </div>
       </div>
-      <button
-        style={{
-          width: 200,
-          height: 80,
-          backgroundColor: "green",
-          fontSize: 20,
-        }}
-        onClick={() => {
-          const exporter = new GLTFExporter();
-          exporter.parse(
-            scene!,
-            (gltf) => {
-              saveArrayBuffer(JSON.stringify(gltf), "demo.gltf");
-            },
-            () => {
-              throw new Error("Something went wrong while exporting scene!");
+      <div style={{ display: "flex", flexDirection: "row" }}>
+        <button
+          style={{
+            width: 200,
+            height: 80,
+            backgroundColor: "green",
+            fontSize: 20,
+          }}
+          onClick={() => {
+            const exporter = new GLTFExporter();
+            exporter.parse(
+              scene!,
+              (gltf) => {
+                saveArrayBuffer(JSON.stringify(gltf), "demo.gltf");
+              },
+              () => {
+                throw new Error("Something went wrong while exporting scene!");
+              }
+            );
+          }}
+        >
+          EXPORT AS GLTF
+        </button>
+        <button
+          style={{
+            width: 200,
+            height: 80,
+            backgroundColor: "red",
+            fontSize: 20,
+          }}
+          onClick={() => {
+            if (selectedPlacedEntity !== null) {
+              console.log("TEST123-selent", selectedPlacedEntity);
+              dataService.removePlacement(selectedPlacedEntity);
             }
-          );
-        }}
-      >
-        EXPORT AS GLTF
-      </button>
+          }}
+        >
+          DELETE SELECTED OBJECT
+        </button>
+      </div>
 
       <div>
         Features:
@@ -322,44 +377,58 @@ function App() {
         <p />- Change colors for next mesh dropped onto canvas
         <p />- RHS can have any number of arbitrary mesh objects
         <p />- Export current scene to GLTF
+        <p />- Import arbitrary GLTF as RHS source object (teapot is gltf as
+        demo)
         <p />- Orbit RHS object on hover
         <p />- Automatically orient object to align with base normal
-        <p />- Import arbitrary GLTF as RHS source object (teapot is gltf)
+        <p />- Outline object when a draggable object is hovered, turn cyan when
+        "Selected". To select, click quickly on an object without moving the
+        mouse (currently no drag radius so a single pixel movement will drag
+        instead of selecting, will add when finished w state machine setup)
+        <p />- Selected objects can be deleted using the big delete button or
+        recolored by choosing a new color on the LHS while the object you want
+        to recolor is selected (currently no indication the color has changed
+        until object is deselected, as I'm currently overloading object color
+        for state info - THREE's default outlines are very biased towards high
+        luminence values & tend to be hard to distinguish. Just proof of
+        concept, the indicator for selected status can be anything)
       </div>
+      <p />
       <div>
         Future plans for improvement:
         <p />
-        - can drag object when is hidden (would need custom raycaster, not too
-        hard)
+        - fix bug where can drag object when is hidden (would need custom
+        raycaster, not too hard)
         <p />
-        - no interface to change color of currently selected object, can only
-        change color for new objects (easy, just proof of concept - not sure
-        spec for colorability yet - in video, color gets applied to all objects)
+        - fix bug where initial drag can start to move camera (consequence of
+        not wanting to set up a whole state machine system yet & effectively
+        trying to emulate that with a complex series of state hooks - once I do
+        that then this is fairly trivial to fix)
         <p />
-        - scene colors washed out (easy, sRGB correction)
+        - fix any bugs to do with mouse up not exiting drag mode (also trivial
+        once I get state machine up)
         <p />- Camera controls Gimbal Lock (less easy, needs to investigate
         intuitive quaternion-based camera controls - not 100% necessary but
         nice)
-        <p />- Currently no way of deleting objects (easy, just need to
-        implement selection mode)
         <p />- No control gizmos for reorienting placed objects (functionally
-        easy, deciding on how gizmo should look is harder)
-        <p />- Mesh doesnt change colors when mouse hovers over it (have the
-        code for it but rn theres a weird rendering bug when I do, didn't think
-        worth investigating)
+        easy, deciding on how gizmo should look is harder - also it depends on
+        if it's desired to keep the same normal direction as the given face on
+        our base mesh or not)
         <p />- Can only add on to base mesh (unclear if adding onto whole mesh
-        is within desired scope, slightly challenging not impossible - raises
+        is within desired scope, slightly challenging not impossible - begs the
         question of what to do w a mesh if the mesh it's 'pasted' onto is
-        removed)
+        removed - spore seems to remove anything that's a "child" of that
+        object)
         <p /> Each mesh currently solid color, can make mesh have
         texture/multiple color slots
         <p /> Animated Components
         <p /> Make code cleaner - just aiming for functional demo instead of
         PR-worthy code. Think this pattern is a great basis for further
         extensibility tho
-        <p /> Components Category
-        <p /> Surround component with "Glow" effect when selected (Threejs has a
-        built in compositor which makes this pretty easy)
+        <p /> "Snap Points" (not-insignificant lift, state machine would be huge
+        help here - would also require spec of what points to snap to in the
+        first place)
+        <p /> Components Categories
         <p /> "Price" system per-object giving intrinsic limit to how many
         objects user can limit, model for profitability
         <p />
@@ -401,14 +470,13 @@ export function DraggableScene({
 }): JSX.Element {
   const objRef = useRef<BufferGeometry>();
   const [hovering, setHovering] = useState<boolean>(false);
-  const { scene } = useThree();
-  useFrame((state, delta) => {
+  useFrame(({ invalidate }, delta) => {
     if (hovering) {
       const angle = delta * 7;
       objRef.current!.rotateX(angle / 3);
       objRef.current!.rotateY(angle / 5);
       objRef.current!.rotateZ(angle / 7);
-      state.invalidate();
+      invalidate();
     }
   });
   return (

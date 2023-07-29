@@ -61,9 +61,12 @@ export class DataService {
       ...R,
       activeColor,
     }));
+    const { selectedPlacedEntity } = this.dataStore.getValue();
+    if (selectedPlacedEntity !== null) {
+      this.updateEntityColor(selectedPlacedEntity, { color: activeColor });
+    }
   }
-  public setSelected(selected: PlacedID) {
-    console.log("TEST124-select");
+  public setSelected(selected: PlacedID | null) {
     this.dataStore.update(({ ...R }) => ({
       ...R,
       selectedPlacedEntity: selected,
@@ -92,6 +95,15 @@ export class DataService {
 
     return data.placedEntityId;
   }
+  public removePlacement(placeId: PlacedID): void {
+    this.dataStore.update(({ placedEntities, ...R }) => ({
+      ...R,
+      placedEntities: placedEntities.filter(({ placedEntityId }) => {
+        return placedEntityId !== placeId;
+      }),
+      selectedPlacedEntity: null,
+    }));
+  }
   public updateEntity(
     placementID: Placement["placedEntityId"],
     newPlacement: Omit<Placement, "placedEntityId">
@@ -114,6 +126,19 @@ export class DataService {
   public updateEntityPosition(
     placementID: Placement["placedEntityId"],
     newPlacement: Pick<Placement, "normal" | "pos">
+  ) {
+    const { placedEntities: currentEntities } = this.dataStore.getValue();
+    const updatingIndex = currentEntities.findIndex(
+      ({ placedEntityId }) => placedEntityId === placementID
+    );
+    this.updateEntity(placementID, {
+      ...currentEntities[updatingIndex],
+      ...newPlacement,
+    });
+  }
+  public updateEntityColor(
+    placementID: Placement["placedEntityId"],
+    newPlacement: Pick<Placement, "color">
   ) {
     const { placedEntities: currentEntities } = this.dataStore.getValue();
     const updatingIndex = currentEntities.findIndex(
