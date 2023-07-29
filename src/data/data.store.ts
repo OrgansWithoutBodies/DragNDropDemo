@@ -6,7 +6,9 @@ import {
   TorusGeometry,
   TorusKnotGeometry,
 } from "three";
+// import Teapot from "/teapot.gltf";
 
+// declare module '*.gltf'{}
 export type DraggableGeometry<TAsync extends boolean = boolean> =
   TAsync extends true
     ? {
@@ -56,15 +58,8 @@ export function createInitialState(): DataState {
           new TorusGeometry(0.25, 0.125).rotateX((Math.PI * 2) / 4),
       },
       ["teapot" as DroppableID]: {
-        // geometry: async () => {
-        //   const loader = new GLTFLoader();
-        //   const data = await loader.loadAsync("src/assets/teapot.gltf");
-        //   console.log("TEST123-returning", data);
-        //   return (
-        //     data.scene.children as any as { geometry: BufferGeometry }[]
-        //   )[0].geometry.scale(10, 10, 10);
-        // },
-        geometryAsyncSource: "src/assets/teapot.gltf",
+        geometryAsyncSource: "/teapot.gltf",
+        // geometryAsyncSource: Teapot,
       },
     },
     placedEntities: [],

@@ -37,8 +37,6 @@ function BaseMeshImpl(
       ref={ref}
       onPointerMove={(event) => {
         if (dragging) {
-          console.log("TEST123", event.intersections);
-
           const baseObj = event.intersections.find(
             (obj) => obj.object.name === "BASE"
           );
@@ -68,10 +66,9 @@ function DraggableElement({
 } & DraggableGeometry<false>) {
   const geometry = implicitGeometry();
   // const hoveringObject = false;
-  const ref = createRef<Mesh>();
+  const ref = useRef<Mesh | null>(null);
   const [mouseDown, setMouseDown] = useState<boolean>(false);
   const [hoveringObject, setHoveringObject] = useState<boolean>(false);
-  console.log("TEST123-outline", isSelected, ref.current);
   return (
     <group>
       <EffectComposer enabled={hoveringObject} autoClear={false}>
@@ -81,8 +78,7 @@ function DraggableElement({
             visibleEdgeColor={0x22ffff}
             edgeStrength={100}
             // TODO no any
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            selection={ref.current as any}
+            selection={ref.current || undefined}
           />
         ) : (
           <></>
@@ -110,7 +106,6 @@ function DraggableElement({
           }
         }}
         onPointerUp={() => {
-          console.log("TEST123-pointerup");
           if (mouseDown && !dragging) {
             setMouseDown(false);
             onSelect(!isSelected);
@@ -240,12 +235,6 @@ function App() {
                         dataService.setSelected(null);
                       }
                       invalidate();
-
-                      console.log(
-                        "TEST123-select",
-                        selectedPlacedEntity,
-                        placedEntityId
-                      );
                     }}
                   />
                 </group>
@@ -362,7 +351,6 @@ function App() {
           }}
           onClick={() => {
             if (selectedPlacedEntity !== null) {
-              console.log("TEST123-selent", selectedPlacedEntity);
               dataService.removePlacement(selectedPlacedEntity);
             }
           }}
@@ -407,6 +395,8 @@ function App() {
         <p />
         - fix any bugs to do with mouse up not exiting drag mode (also trivial
         once I get state machine up)
+        <p />
+        - DRACO compression/decompression for GLTFs
         <p />- Camera controls Gimbal Lock (less easy, needs to investigate
         intuitive quaternion-based camera controls - not 100% necessary but
         nice)

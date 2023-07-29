@@ -23,6 +23,7 @@ export function useAkita<
   service: TService,
   queryTerms: SubscribedQueryKeys<TQuery>
 ): [LiteralQueryState<TQuery, typeof queryTerms>, TService[keyof TService][]] {
+  // TODO
   console.log(service);
   const [retrievedQueryTerms, setRetrievedQueryTerms] = useState<
     LiteralQueryState<TQuery, typeof queryTerms>
